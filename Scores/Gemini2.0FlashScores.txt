@@ -1,0 +1,5 @@
+2-13-25
+Standard: 174/192 
+Temporal: 99/102 
+MultiHop: 34/39  
+Overall: 307/333

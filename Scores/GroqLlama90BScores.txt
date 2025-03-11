@@ -1,0 +1,16 @@
+2-13-25
+Standard: 177/192 
+Temporal: 98/102 
+MultiHop: 34/39  
+Overall: 309/333
+
+2-28-25
+Standard: 180/192
+Temporal: 91/102
+MultiHop: 39/39
+Overall: 310/333
+
+3-4-25
+Standard: 180/192
+
+Overall: 799/858 = 93.1% success rate
