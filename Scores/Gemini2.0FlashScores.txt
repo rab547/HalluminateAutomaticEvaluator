@@ -1,5 +1,14 @@
 2-13-25
 Standard: 174/192 
-Temporal: 99/102 
+Temporal: 99/102 //89 Untuned, 91 first round tuned
 MultiHop: 34/39  
 Overall: 307/333
+
+2-28-25
+Standard: 181/192 
+Temporal: 95/102 //89 Untuned, 94 tuned
+MultiHop: 37/39  
+Overall: -/333
+
+3-4-25
+Temporal: -/102  //89 Untuned, 99 tuned

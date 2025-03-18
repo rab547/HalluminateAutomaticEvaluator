@@ -6,6 +6,9 @@ from tqdm import tqdm
 import sys
 import google.generativeai as genai
 from openai import AzureOpenAI
+from litellm_client import generate_response
+import time
+
 
 
 
@@ -63,32 +66,29 @@ def parseCSVWithoutCorrectAnswers(file_name):
 
 #Utilized to take in the input data and assign each query/response pair a PASS/FAIL/ERROR label and give reasoning
 def evaluateAnswers(input):
-    #TODO undo this, only so i dont burn through credits too fast
-    # input = input[0:5]
-
     load_dotenv()
-
     #GROQ
-    # client = Groq(api_key=os.getenv("API_KEY"))
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
     #GEMINI
-    # genai.configure(api_key=os.getenv("GEMINI_API_KEY"))  # Set up API Key
-    # model = genai.GenerativeModel("gemini-1.5-pro")
+    # genai.configure(api_key=os.getenv("GEMINI_API_KEY")) 
+    # model = genai.GenerativeModel("gemini-2.0-flash-thinking-exp-01-21")
 
     #OPEN AI AZURE
-    client = AzureOpenAI(azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-    api_version="2025-02-01-preview")
+    # client = AzureOpenAI(azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    # api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+    # api_version="2025-02-01-preview")
 
 
     for row in tqdm(input, desc="Grading responses"):
+        # time.sleep(1.5)
         prompt ="""
 You are an expert evaluator for question-answering systems. Your task is to assess whether a generated answer correctly addresses a question by comparing it to a known ground truth answer.
 
 Instructions: Carefully analyze the question, ground truth correct answer, and the system's returned answer provided below. Then, assign one of the following labels:
 
 ERROR: The returned answer contains an error stack trace or system error message instead of an actual answer.
-PASS: The returned answer successfully captures all core aspects of the ground truth, even if phrased completely differently. All key information and critical details are present.
+PASS: The returned answer successfully captures all core aspects of the ground truth, even if phrased completely differently. All key information and critical details are present. Additional information is okay.
 FAIL: The returned answer is missing key aspects of the ground truth, contains incorrect information, or provides misleading details. This includes partial answers that omit critical information. 
 After assigning the label, provide a concise explanation (1 sentences) justifying your decision. Highlight specific elements from both the ground truth and returned answer that influenced your evaluation.
 
@@ -105,40 +105,51 @@ Returned_Explanation: [Your justification for the assigned label]
 
 
         #GROQ
-        # completion = client.chat.completions.create(
-        #     model="llama-3.2-90b-vision-preview",
-        #     messages=[
-        #         {
-        #                 "role": "user",
-        #                 "content": prompt
-        #         }
-        #     ],
-        #     temperature=0.5,
-        #     max_completion_tokens=1024,
-        #     top_p=1,
-        #     stream=False,
-        #     stop=None,
-        # )
-        # llm_response = completion.choices[0].message.content
+        completion = client.chat.completions.create(
+            model="llama-3.2-90b-vision-preview",
+            messages=[
+                {
+                        "role": "user",
+                        "content": prompt
+                }
+            ],
+            temperature=0,
+            max_completion_tokens=1024,
+            top_p=1,
+            stream=False,
+            stop=None,
+        )
+        llm_response = completion.choices[0].message.content
 
         #GEMINI 
         # response = model.generate_content(
         #     prompt,
         #     generation_config={
-        #         "temperature": 0.5, 
+        #         "temperature": 0, 
         #         "max_output_tokens": 1024
         #     }
         # )
-        # llm_response = response.text.strip()
-
+        # llm_response = ""
+        # try:
+        #     llm_response = response.text.strip()
+        # except:
+        #     llm_response = "Assigned_Label: No Response Created"
 
         #OPENAI
-        response = client.chat.completions.create(model="o3-mini",  
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.5,  # Set creativity level
-        max_tokens=1024)
-
-        llm_response = response.choices[0].message.content.strip()
+        # llm_response = generate_response(
+        #         model="o1-azure",
+        #         messages=[
+        #         {
+        #                 "role": "user",
+        #                 "content": prompt
+        #         }
+        #     ],
+        #     #only temp of 1 available of o3 mini
+        #     temperature=1,
+        #     max_completion_tokens=1024,
+        #     stream=False,
+        #     stop=None,
+        #     )
 
 
         # print(llm_response)
@@ -183,11 +194,11 @@ def gradeAnswers(manuallyGraded, LLMGraded):
         print("Incorrect Evaluations: ")
         for subArray in incorrect:
             print("Incorrect Row: " + str(subArray[0]))
-            print("Question: " + subArray[1]['question'])
-            print("Correct Answer: " + subArray[1]['ground truth'])
-            print("Returned Answer: " + subArray[1]['returned answer'])
-            print("Correct Label: " + subArray[1]['label'])
-            print("LLM Evaluation and Reasoning: " + subArray[2]['label'] + ": " + subArray[2]['explanation'])
+            print("Question: " + str(subArray[1]['question']))
+            print("Correct Answer: " + str(subArray[1]['ground truth']))
+            print("Returned Answer: " + str(subArray[1]['returned answer']))
+            print("Correct Label: " + str(subArray[1]['label']))
+            print("LLM Evaluation and Reasoning: " + str(subArray[2]['label']) + ": " + str(subArray[2]['explanation']))
             print()
 
     print("\nEvaluator matched manual grading " + str(correct) + " out of " + str(count) + " times, which is a " + str((correct/count)*100) + " percent success rate.\n")
@@ -198,24 +209,19 @@ def outputGradedCSV(gradings, output_file):
         writer.writeheader()
         writer.writerows(gradings)
 
-
 def evaluateAndOutput(filePath):
-    manuallyGraded = parseCSVWithCorrectAnswers(filePath)
+    # manuallyGraded = parseCSVWithCorrectAnswers(filePath)
     llmGraded = evaluateAnswers(parseCSVWithoutCorrectAnswers(filePath))
-    gradeAnswers(manuallyGraded, llmGraded)
-    outputGradedCSV(llmGraded, "Output.csv")
-    print("Grading complete. Output saved to Output.csv")
+    # gradeAnswers(manuallyGraded, llmGraded)
+    outputGradedCSV(llmGraded, "OUTPUT_" + filePath)
+    print("Grading complete. Output saved to OUTPUT_" + filePath)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python script.py <file_path>")
         sys.exit(1)
-
     filePath = " ".join(sys.argv[1:])
     evaluateAndOutput(filePath)
 
 
-# file_path = "Data/Copy of 2-13-25 Booo Eval - MultiHop.csv"
-# evaluatedAnswers = evaluateAnswers(parseCSVWithoutCorrectAnswers(file_path))
-# gradeAnswers(parseCSVWithCorrectAnswers(file_path), evaluateAnswers)
 

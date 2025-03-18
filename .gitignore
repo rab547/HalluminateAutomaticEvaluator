@@ -1,1 +1,7 @@
 .env
+*.csv
+/Scores
+/.env
+/Data
+/__pycache__
+
